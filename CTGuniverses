@@ -1,0 +1,50 @@
+/*
+Universes: CTE to recode age into age buckets, assign phone types, and split into universes
+*/
+WITH universes AS 
+(
+SELECT a.voter_file_vanid, a.partisanship, 
+a.turnout_pres_gen, sex, race_name, b.age,
+--Create age buckets
+CASE 
+WHEN age <18 THEN '<18'
+WHEN age BETWEEN 18 AND 39 THEN '18-39'
+WHEN age BETWEEN 40 AND 59 THEN '40-59'
+WHEN age BETWEEN 60 AND 79 THEN '60-79'
+WHEN age >79 THEN '80+'
+else 'no age'
+END AS age_bucket
+,
+--Create phone type categories
+CASE 
+WHEN c.cell IS NOT NULL AND c.landline IS NULL THEN 'cell only'
+WHEN c.landline IS NOT NULL AND c.cell IS NULL THEN 'landline only'
+WHEN c.cell IS NOT NULL AND c.landline IS NOT NULL THEN 'cell and landline'
+WHEN c.cell IS NULL AND c.landline IS NULL THEN 'no phone'
+END AS phone_type
+ , d.van_county
+,
+--Create actual universes based on scores
+CASE
+WHEN partisanship > 70 AND turnout_pres_gen >70
+THEN 'volunteer'
+WHEN partisanship BETWEEN 30 AND 70 AND turnout_pres_gen BETWEEN 30 AND 100 
+THEN 'persuasion'
+WHEN partisanship BETWEEN 70 AND 100 AND turnout_pres_gen BETWEEN 30 AND 70 
+THEN 'mobilization'
+ELSE 'other'
+END AS universe
+FROM ctg2020.vansync.scores a
+JOIN ctg2020.vansync.person_myv b ON a.voter_file_vanid= b.voter_file_vanid
+LEFT JOIN ctg2020.vansync.person_phone c ON b.voter_file_vanid=c.voter_file_vanid
+JOIN ctg2020.vansync.turf d ON b.county_name=d.van_county
+AND region_name='Region 01 - Jamara'
+)
+--Query from CTE to count number of registered voters in each category
+SELECT sex, race_name, age_bucket, phone_type, 
+van_county,universe, 
+COUNT(DISTINCT voter_file_vanid) AS registered_voters
+FROM universes
+GROUP BY 1,2,3,4,5,6
+ORDER BY 7 DESC
+;
