@@ -1,0 +1,18 @@
+SELECT communityCity, 
+advertiser,
+CASE 
+WHEN LOWER(advertiser) LIKE '%steyer%' THEN 'Steyer'
+WHEN LOWER(advertiser) LIKE '%trump%' THEN 'Trump'
+WHEN LOWER(advertiser) LIKE '%biden%' THEN 'Biden'
+WHEN LOWER(advertiser) LIKE '%pete%' OR LOWER(advertiser) LIKE '%buttigieg%' THEN 'Buttigieg'
+ELSE 'Other'
+END AS promoted_candidate
+,communityState
+,SUM(grossSpend)/100 AS cash_money
+FROM bigquery-public-data.fcc_political_ads.broadcast_tv_radio_station a
+JOIN bigquery-public-data.fcc_political_ads.file_record b ON a.stationID=b.stationID
+JOIN bigquery-public-data.fcc_political_ads.content_info c ON b.ocrFileDirectory=c.ocrFileDirectory 
+--WHERE LOWER(advertiser) LIKE '%pete%' OR LOWER(advertiser) LIKE '%buttigieg%'
+GROUP BY 1,2,3,4
+ORDER BY 5 DESC 
+LIMIT 100;
